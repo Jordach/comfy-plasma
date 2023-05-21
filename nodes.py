@@ -6,6 +6,9 @@ import torch
 import numpy as np
 import comfy
 
+def remap(val, min_val, max_val, min_map, max_map):
+	return (val-min_val)/(max_val-min_val) * (max_map-min_map) + min_map
+
 class PlasmaNoise:
 	@classmethod
 	def INPUT_TYPES(s):
@@ -87,9 +90,9 @@ class PlasmaNoise:
 
 	RETURN_TYPES = ("IMAGE",)
 	FUNCTION = "generate_plasma"
-	CATEGORY = "image"
+	CATEGORY = "image/noise"
 
-	def generate_plasma(self, width, height, turbulence, value_min, value_max, red_min, red_max, green_min, green_max, blue_min, blue_max, seed=None):
+	def generate_plasma(self, width, height, turbulence, value_min, value_max, red_min, red_max, green_min, green_max, blue_min, blue_max, seed):
 		# Image size
 		w = width
 		h = height
@@ -115,9 +118,7 @@ class PlasmaNoise:
 		roughness = turbulence
 		pixmap = []
 
-		def remap(val, min_val, max_val, min_map, max_map):
-			return (val-min_val)/(max_val-min_val) * (max_map-min_map) + min_map
-
+		random.seed(seed)
 		def adjust(xa, ya, x, y, xb, yb):
 			if(pixmap[x][y] == 0):
 				d=math.fabs(xa-xb) + math.fabs(ya-yb)
@@ -242,6 +243,324 @@ class PlasmaNoise:
 		pbar.update_absolute(step, 4)
 		return (torch.from_numpy(np.array(outimage).astype(np.float32) / 255.0).unsqueeze(0),)
 
+class RandNoise:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"width": ("INT", {
+					"default": 512,
+					"min": 128,
+					"max": 8192,
+					"step": 8
+				}),
+				"height": ("INT", {
+					"default": 512,
+					"min": 128,
+					"max": 8192,
+					"step": 8
+				}),
+
+				"value_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"value_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+
+				"red_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"red_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"green_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"green_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"blue_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"blue_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				# Does nothing because ComfyUI doesn't understand "static" output nodes
+				"seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "generate_noise"
+	CATEGORY = "image/noise"
+
+	def generate_noise(self, width, height, value_min, value_max, red_min, red_max, green_min, green_max, blue_min, blue_max, seed):
+		# Image size
+		w = width
+		h = height
+		aw = copy.deepcopy(w)
+		ah = copy.deepcopy(h)
+
+		outimage = Image.new("RGB", (aw, ah))
+		random.seed(seed)
+
+		# Clamp per channel and globally
+		clamp_v_min = value_min
+		clamp_v_max = value_max
+		clamp_r_min = red_min
+		clamp_r_max = red_max
+		clamp_g_min = green_min
+		clamp_g_max = green_max
+		clamp_b_min = blue_min
+		clamp_b_max = blue_max
+
+		# Handle value clamps
+		lv = 0
+		mv = 0
+		if clamp_v_min == -1:
+			lv = 0
+		else:
+			lv = clamp_v_min
+
+		if clamp_v_max == -1:
+			mv = 255
+		else:
+			mv = clamp_v_max
+
+		lr = 0
+		mr = 0
+		if clamp_r_min == -1:
+			lr = lv
+		else:
+			lr = clamp_r_min
+
+		if clamp_r_max == -1:
+			mr = mv
+		else:
+			mr = clamp_r_max
+
+		lg = 0
+		mg = 0
+		if clamp_g_min == -1:
+			lg = lv
+		else:
+			lg = clamp_g_min
+
+		if clamp_g_max == -1:
+			mg = mv
+		else:
+			mg = clamp_g_max
+
+		lb = 0
+		mb = 0
+		if clamp_b_min == -1:
+			lb = lv
+		else:
+			lb = clamp_b_min
+
+		if clamp_b_max == -1:
+			mb = mv
+		else:
+			mb = clamp_b_max
+
+		pbar = comfy.utils.ProgressBar(ah)
+		step = 0
+		for y in range(ah):
+			for x in range(aw):
+				nr = random.randint(lr, mr)
+				ng = random.randint(lg, mg)
+				nb = random.randint(lb, mb)
+				outimage.putpixel((x,y), (nr, ng, nb))
+			step += 1
+			pbar.update_absolute(step, ah)
+
+		return (torch.from_numpy(np.array(outimage).astype(np.float32) / 255.0).unsqueeze(0),)
+
+
+class GreyNoise:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"width": ("INT", {
+					"default": 512,
+					"min": 128,
+					"max": 8192,
+					"step": 8
+				}),
+				"height": ("INT", {
+					"default": 512,
+					"min": 128,
+					"max": 8192,
+					"step": 8
+				}),
+				
+				"value_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"value_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+
+				"red_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"red_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"green_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"green_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"blue_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"blue_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				# Does nothing because ComfyUI doesn't understand "static" output nodes
+				"seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "generate_noise"
+	CATEGORY = "image/noise"
+
+	def generate_noise(self, width, height, value_min, value_max, red_min, red_max, green_min, green_max, blue_min, blue_max, seed):
+		# Image size
+		w = width
+		h = height
+		aw = copy.deepcopy(w)
+		ah = copy.deepcopy(h)
+
+		outimage = Image.new("RGB", (aw, ah))
+		random.seed(seed)
+
+		# Clamp per channel and globally
+		clamp_v_min = value_min
+		clamp_v_max = value_max
+		clamp_r_min = red_min
+		clamp_r_max = red_max
+		clamp_g_min = green_min
+		clamp_g_max = green_max
+		clamp_b_min = blue_min
+		clamp_b_max = blue_max
+
+		# Handle value clamps
+		lv = 0
+		mv = 0
+		if clamp_v_min == -1:
+			lv = 0
+		else:
+			lv = clamp_v_min
+
+		if clamp_v_max == -1:
+			mv = 255
+		else:
+			mv = clamp_v_max
+
+		lr = 0
+		mr = 0
+		if clamp_r_min == -1:
+			lr = lv
+		else:
+			lr = clamp_r_min
+
+		if clamp_r_max == -1:
+			mr = mv
+		else:
+			mr = clamp_r_max
+
+		lg = 0
+		mg = 0
+		if clamp_g_min == -1:
+			lg = lv
+		else:
+			lg = clamp_g_min
+
+		if clamp_g_max == -1:
+			mg = mv
+		else:
+			mg = clamp_g_max
+
+		lb = 0
+		mb = 0
+		if clamp_b_min == -1:
+			lb = lv
+		else:
+			lb = clamp_b_min
+
+		if clamp_b_max == -1:
+			mb = mv
+		else:
+			mb = clamp_b_max
+
+		pbar = comfy.utils.ProgressBar(ah)
+		step = 0
+		for y in range(ah):
+			for x in range(aw):
+				nv = random.randint(lv, mv)
+				nr = int(remap(nv, lv, mv, lr, mr))
+				ng = int(remap(nv, lv, mv, lg, mg))
+				nb = int(remap(nv, lv, mv, lb, mb))
+				outimage.putpixel((x,y), (nr, ng, nb))
+			step += 1
+			pbar.update_absolute(step, ah)
+
+		return (torch.from_numpy(np.array(outimage).astype(np.float32) / 255.0).unsqueeze(0),)
+
 # Torch rand noise
 def prepare_rand_noise(latent_image, seed, noise_inds=None):
     """
@@ -324,10 +643,14 @@ class PlasmaSampler:
 
 NODE_CLASS_MAPPINGS = {
 	"JDC_Plasma": PlasmaNoise,
+	"JDC_RandNoise": RandNoise,
+	"JDC_GreyNoise": GreyNoise,
 	"JDC_PlasmaSampler": PlasmaSampler,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
 	"JDC_Plasma": "Plasma Noise",
+	"JDC_RandNoise": "Random Noise",
+	"JDC_GreyNoise": "Greyscale Noise",
 	"JDC_PlasmaSampler": "Plasma KSampler"
 }

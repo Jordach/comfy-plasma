@@ -5,14 +5,51 @@ A simple plasma noise generator for ComfyUI. Other noise generators may appear o
 ## Plasma Noise:
 ![Example](images/plasma_node.png)
 
+This node generates extremely noisy fractal diamond square noise clouds.
+
 * Width, Height: Sets the generated image size as desired - steps in increments of 8.
 * Turbulence: Scales the noise clouds, lower values result in smoother, larger clouds, while higher values result in more static like noise.
 * Value Min/Max: Limits how dark/bright the noise can reach. -1 implies 0 and 255 for Min and Max respectively.
 * Red Min/Max: Limits how strong the red channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
 * Green Min/Max: Limits how strong the green channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
 * Blue Min/Max: Limits how strong the blue channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
-* Seed: Only there so ComfyUI will use the node to generate a new image, instead of locking up and refusing to work. (Should you want to reuse a previous noise - use a save image node.)
+* Seed: Will replicate a specific noise seed on every execution.
+  * Fixed, seed stays the same after generations.
+  * Increment, seed increases by 1 after generations.
+  * Decrement, seed decreases by 1 after generations.
+  * Randomize, seed randomly changes after generations.
+____
+## Random Noise:
+![Example](images/random_node.png)
 
+This node generates three values per pixel, then rescales it per channel min/max values.
+
+* Width, Height: Sets the generated image size as desired - steps in increments of 8.
+* Value Min/Max: Limits how dark/bright the noise can reach. -1 implies 0 and 255 for Min and Max respectively.
+* Red Min/Max: Limits how strong the red channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Green Min/Max: Limits how strong the green channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Blue Min/Max: Limits how strong the blue channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Seed: Will replicate a specific noise seed on every execution.
+  * Fixed, seed stays the same after generations.
+  * Increment, seed increases by 1 after generations.
+  * Decrement, seed decreases by 1 after generations.
+  * Randomize, seed randomly changes after generations.
+____
+## Greyscale Noise:
+![Example](images/greyscale_node.png)
+
+This node generates one value per pixel then rescales it per channel min/max values. So a value pixel of 128 will scale to 63 when red is set to work between 0 and 128.
+
+* Width, Height: Sets the generated image size as desired - steps in increments of 8.
+* Value Min/Max: Limits how dark/bright the noise can reach. -1 implies 0 and 255 for Min and Max respectively.
+* Red Min/Max: Limits how strong the red channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Green Min/Max: Limits how strong the green channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Blue Min/Max: Limits how strong the blue channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Seed: Will replicate a specific noise seed on every execution.
+  * Fixed, seed stays the same after generations.
+  * Increment, seed increases by 1 after generations.
+  * Decrement, seed decreases by 1 after generations.
+  * Randomize, seed randomly changes after generations.
 ____
 ## KSampler Plasma:
 ![Example](images/ksampler_node.png)
