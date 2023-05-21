@@ -51,7 +51,7 @@ This node generates one value per pixel then rescales it per channel min/max val
   * Decrement, seed decreases by 1 after generations.
   * Randomize, seed randomly changes after generations.
 ____
-## KSampler Plasma:
+## Plasma KSampler:
 ![Example](images/ksampler_node.png)
 
 * Noise Seed: The noise seed used in Latent Noise.
