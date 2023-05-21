@@ -15,11 +15,29 @@ A simple plasma noise generator for ComfyUI. Other noise generators may appear o
 
 ____
 ## KSampler Plasma:
-## ***WARNING: This node does not add latent noise to the image and is entirely dependant on the noise from the Plasma Noise node. It otherwise works exactly like any other KSampler in ComfyUI.***
-
 ![Example](images/ksampler_node.png)
+
+* Noise Seed: The noise seed used in Latent Noise.
+* Control After Generate: 
+  * Fixed, seed stays the same after generations.
+  * Increment, seed increases by 1 after generations.
+  * Decrement, seed decreases by 1 after generations.
+  * Randomize, seed randomly changes after generations.
+* Steps: The number of steps the software should take while resolving your image.
+* CFG: How strongly should the prompts be followed? Less CFG means more creativity, more CFG means less creativity, but more accurate prompts.
+* Denoise: How much should the image be blurred to allow the model to interpret the noise/image with noise? Higher values at high resolutions can induce faces within faces. Lower values will look closer to the input image/noise but prevent faces within faces.
+* Latent Noise: How strong should the built in noise be. 0 means no noise is used, and 1 means it's adding all the noise.
+* Distribution Type:
+  * Default, uses torch.randn() which is a gaussian distributed noise algorithm. Unable to make very dark, very bright or high contrast images.
+  * Rand, uses torch.rand() whch is a truly random noise algorithm. Doesn't stick to a single random distribution and can change wildly based on input.
+* Sampler Name: Pick the one that works for you best. Some may require more steps than others.
+* Schedular: Pick the one that works for you best.
 ____
 # Example Workflow:
-An example to use Plasma Noise as a replacement noise for txt2img is as follows:
-
 ![How to use it](images/example.png)
+
+# Using Plasma Sampler with Plasma Noise:
+![Example](images/example_plasma_setup.png)
+
+# Using Plasma Sampler without Plasma Noise:
+![Example](images/example_latent_setup.png)
