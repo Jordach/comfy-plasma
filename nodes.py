@@ -80,7 +80,6 @@ class PlasmaNoise:
 					"max": 255,
 					"step": 1
 				}),
-				# Does nothing because ComfyUI doesn't understand "static" output nodes
 				"seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
 			}
 		}
@@ -145,6 +144,10 @@ class PlasmaNoise:
 				subdivide(x,y1,x2,y)
 				subdivide(x,y,x2,y2)
 				subdivide(x1,y,x,y2)
+
+		random_generator_state_save = random.getstate()
+		random.seed(seed)
+
 		pbar = comfy.utils.ProgressBar(4)
 		step = 0
 
@@ -240,6 +243,9 @@ class PlasmaNoise:
 
 		step += 1
 		pbar.update_absolute(step, 4)
+
+		random.setstate(random_generator_state_save)
+
 		return (torch.from_numpy(np.array(outimage).astype(np.float32) / 255.0).unsqueeze(0),)
 
 # Torch rand noise
