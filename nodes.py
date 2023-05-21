@@ -320,7 +320,6 @@ class PlasmaSampler:
 		rand = False
 		if distribution_type == "rand":
 			rand = True
-			print("using rand")
 		return common_ksampler(model, noise_seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise, latent_noise, use_rand=rand)
 
 NODE_CLASS_MAPPINGS = {
