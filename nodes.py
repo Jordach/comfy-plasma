@@ -243,11 +243,15 @@ class PlasmaNoise:
 		return (torch.from_numpy(np.array(outimage).astype(np.float32) / 255.0).unsqueeze(0),)
 
 # Modified ComfyUI sampler
-def common_ksampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent, denoise, start_step=None, last_step=None):
+def common_ksampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent, denoise, latent_noise, start_step=None, last_step=None):
 	device = comfy.model_management.get_torch_device()
 	latent_image = latent["samples"]
 
 	noise = torch.zeros(latent_image.size(), dtype=latent_image.dtype, layout=latent_image.layout, device="cpu")
+
+	if latent_noise > 0:
+		batch_inds = latent["batch_index"] if "batch_index" in latent else None
+		noise = noise + (comfy.sample.prepare_noise(latent_image, seed, batch_inds) * latent_noise)
 
 	noise_mask = None
 	if "noise_mask" in latent:
@@ -271,8 +275,9 @@ class PlasmaSampler:
 					{"model": ("MODEL",),
 					"noise_seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
 					"steps": ("INT", {"default": 20, "min": 1, "max": 10000}),
-					"cfg": ("FLOAT", {"default": 8.0, "min": 0.0, "max": 100.0}),
+					"cfg": ("FLOAT", {"default": 7.0, "min": 0.0, "max": 100.0, "step": 0.1}),
 					"denoise": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 1.0, "step": 0.01}),
+					"latent_noise": ("FLOAT", {"default": 0.05, "min": 0.0, "max": 1.0, "step": 0.01}),
 					"sampler_name": (comfy.samplers.KSampler.SAMPLERS, ),
 					"scheduler": (comfy.samplers.KSampler.SCHEDULERS, ),
 					"positive": ("CONDITIONING", ),
@@ -284,8 +289,8 @@ class PlasmaSampler:
 	FUNCTION = "sample"
 	CATEGORY = "sampling"
 
-	def sample(self, model, noise_seed, steps, cfg, denoise, sampler_name, scheduler, positive, negative, latent_image):
-		return common_ksampler(model, noise_seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=denoise)
+	def sample(self, model, noise_seed, steps, cfg, denoise, sampler_name, scheduler, positive, negative, latent_image, latent_noise):
+		return common_ksampler(model, noise_seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise, latent_noise)
 
 NODE_CLASS_MAPPINGS = {
 	"JDC_Plasma": PlasmaNoise,
@@ -294,5 +299,5 @@ NODE_CLASS_MAPPINGS = {
 
 NODE_DISPLAY_NAME_MAPPINGS = {
 	"JDC_Plasma": "Plasma Noise",
-	"JDC_PlasmaSampler": "KSampler for Plasma"
+	"JDC_PlasmaSampler": "Plasma KSampler"
 }
