@@ -1,166 +1,39 @@
 {
-  "last_node_id": 15,
-  "last_link_id": 20,
+  "last_node_id": 35,
+  "last_link_id": 50,
   "nodes": [
     {
-      "id": 9,
-      "type": "VAEEncode",
+      "id": 12,
+      "type": "SaveImage",
       "pos": [
-        715,
-        150
+        1817,
+        -312
       ],
       "size": {
-        "0": 210,
-        "1": 46
+        "0": 791.980224609375,
+        "1": 976.8241577148438
       },
       "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "pixels",
-          "type": "IMAGE",
-          "link": 3,
-          "slot_index": 0
-        },
-        {
-          "name": "vae",
-          "type": "VAE",
-          "link": 4,
-          "slot_index": 1
-        }
-      ],
-      "outputs": [
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": [
-            17
-          ],
-          "shape": 3,
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "VAEEncode"
-      }
-    },
-    {
-      "id": 1,
-      "type": "JDC_Plasma",
-      "pos": [
-        225,
-        52
-      ],
-      "size": {
-        "0": 315,
-        "1": 346
-      },
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            1,
-            3
-          ],
-          "shape": 3
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "JDC_Plasma"
-      },
-      "widgets_values": [
-        640,
-        912,
-        2.75,
-        -1,
-        -1,
-        -1,
-        -1,
-        -1,
-        -1,
-        -1,
-        -1,
-        1101010240033452,
-        "randomize"
-      ]
-    },
-    {
-      "id": 2,
-      "type": "PreviewImage",
-      "pos": [
-        708,
-        -237
-      ],
-      "size": {
-        "0": 286,
-        "1": 307
-      },
-      "flags": {},
-      "order": 2,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 1,
-          "slot_index": 0
+          "link": 15
         }
       ],
-      "properties": {
-        "Node name for S&R": "PreviewImage"
-      }
-    },
-    {
-      "id": 8,
-      "type": "CLIPTextEncode",
-      "pos": [
-        702,
-        585
-      ],
-      "size": {
-        "0": 400,
-        "1": 200
-      },
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "clip",
-          "type": "CLIP",
-          "link": 6,
-          "slot_index": 0
-        }
-      ],
-      "outputs": [
-        {
-          "name": "CONDITIONING",
-          "type": "CONDITIONING",
-          "links": [
-            19
-          ],
-          "shape": 3,
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "CLIPTextEncode"
-      },
+      "properties": {},
       "widgets_values": [
-        ""
+        "ComfyUI"
       ]
     },
     {
       "id": 11,
       "type": "VAEDecode",
       "pos": [
-        1474,
-        238
+        1550,
+        236
       ],
       "size": {
         "0": 210,
@@ -173,7 +46,7 @@
         {
           "name": "samples",
           "type": "LATENT",
-          "link": 16
+          "link": 46
         },
         {
           "name": "vae",
@@ -198,154 +71,25 @@
       }
     },
     {
-      "id": 13,
-      "type": "JDC_PlasmaSampler",
-      "pos": [
-        1148,
-        176
-      ],
-      "size": {
-        "0": 310,
-        "1": 262
-      },
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 20
-        },
-        {
-          "name": "positive",
-          "type": "CONDITIONING",
-          "link": 19
-        },
-        {
-          "name": "negative",
-          "type": "CONDITIONING",
-          "link": 18,
-          "slot_index": 2
-        },
-        {
-          "name": "latent_image",
-          "type": "LATENT",
-          "link": 17,
-          "slot_index": 3
-        }
-      ],
-      "outputs": [
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": [
-            16
-          ],
-          "shape": 3,
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "JDC_PlasmaSampler"
-      },
-      "widgets_values": [
-        50647746879946,
-        "randomize",
-        40,
-        7,
-        0.95,
-        "euler_ancestral",
-        "karras"
-      ]
-    },
-    {
-      "id": 10,
-      "type": "CLIPTextEncode",
-      "pos": [
-        709,
-        318
-      ],
-      "size": {
-        "0": 400,
-        "1": 200
-      },
-      "flags": {
-        "collapsed": false
-      },
-      "order": 4,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "clip",
-          "type": "CLIP",
-          "link": 10
-        }
-      ],
-      "outputs": [
-        {
-          "name": "CONDITIONING",
-          "type": "CONDITIONING",
-          "links": [
-            18
-          ],
-          "shape": 3,
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "CLIPTextEncode"
-      },
-      "widgets_values": [
-        ""
-      ]
-    },
-    {
-      "id": 12,
-      "type": "SaveImage",
-      "pos": [
-        1713,
-        -255
-      ],
-      "size": {
-        "0": 545.5961303710938,
-        "1": 998.8516845703125
-      },
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 15
-        }
-      ],
-      "properties": {},
-      "widgets_values": [
-        "ComfyUI"
-      ]
-    },
-    {
       "id": 5,
       "type": "CheckpointLoader",
       "pos": [
-        205,
+        210,
         450
       ],
-      "size": [
-        368.24479782104504,
-        122
-      ],
+      "size": {
+        "0": 368.24481201171875,
+        "1": 122
+      },
       "flags": {},
-      "order": 1,
+      "order": 0,
       "mode": 0,
       "outputs": [
         {
           "name": "MODEL",
           "type": "MODEL",
           "links": [
-            20
+            48
           ],
           "shape": 3,
           "slot_index": 0
@@ -376,6 +120,263 @@
       "widgets_values": [
         "",
         ""
+      ]
+    },
+    {
+      "id": 2,
+      "type": "PreviewImage",
+      "pos": [
+        668,
+        -414
+      ],
+      "size": {
+        "0": 286,
+        "1": 307
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 1,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 9,
+      "type": "VAEEncode",
+      "pos": [
+        659,
+        -52
+      ],
+      "size": {
+        "0": 210,
+        "1": 46
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "pixels",
+          "type": "IMAGE",
+          "link": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 4,
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            47
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEEncode"
+      }
+    },
+    {
+      "id": 8,
+      "type": "CLIPTextEncode",
+      "pos": [
+        656,
+        48
+      ],
+      "size": {
+        "0": 467.83734130859375,
+        "1": 195.19961547851562
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 6,
+          "slot_index": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            49
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "id": 10,
+      "type": "CLIPTextEncode",
+      "pos": [
+        697,
+        301
+      ],
+      "size": {
+        "0": 400,
+        "1": 200
+      },
+      "flags": {
+        "collapsed": false
+      },
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 10
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            50
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "id": 35,
+      "type": "JDC_PlasmaSampler",
+      "pos": [
+        1182,
+        -102
+      ],
+      "size": {
+        "0": 315,
+        "1": 310
+      },
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 48,
+          "slot_index": 0
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 49
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 50
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 47
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            46
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "JDC_PlasmaSampler"
+      },
+      "widgets_values": [
+        263809926275995,
+        "randomize",
+        20,
+        7,
+        0.9,
+        0.05,
+        "rand",
+        "euler_ancestral",
+        "normal"
+      ]
+    },
+    {
+      "id": 1,
+      "type": "JDC_Plasma",
+      "pos": [
+        208,
+        -364
+      ],
+      "size": {
+        "0": 315,
+        "1": 346
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            1,
+            3
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "JDC_Plasma"
+      },
+      "widgets_values": [
+        512,
+        512,
+        2.839999999999999,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        847190283485219,
+        "randomize"
       ]
     }
   ],
@@ -437,44 +438,44 @@
       "IMAGE"
     ],
     [
-      16,
-      13,
+      46,
+      35,
       0,
       11,
       0,
       "LATENT"
     ],
     [
-      17,
+      47,
       9,
       0,
-      13,
+      35,
       3,
       "LATENT"
     ],
     [
-      18,
-      10,
+      48,
+      5,
       0,
-      13,
-      2,
-      "CONDITIONING"
+      35,
+      0,
+      "MODEL"
     ],
     [
-      19,
+      49,
       8,
       0,
-      13,
+      35,
       1,
       "CONDITIONING"
     ],
     [
-      20,
-      5,
+      50,
+      10,
       0,
-      13,
-      0,
-      "MODEL"
+      35,
+      2,
+      "CONDITIONING"
     ]
   ],
   "groups": [],
