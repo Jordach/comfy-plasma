@@ -51,6 +51,38 @@ This node generates one value per pixel then rescales it per channel min/max val
   * Decrement, seed decreases by 1 after generations.
   * Randomize, seed randomly changes after generations.
 ____
+## Pink Noise:
+![Example](images/pink_node.png)
+
+This node generates three values per pixel, then rescales it per channel min/max values.
+
+* Width, Height: Sets the generated image size as desired - steps in increments of 8.
+* Value Min/Max: Limits how dark/bright the noise can reach. -1 implies 0 and 255 for Min and Max respectively.
+* Red Min/Max: Limits how strong the red channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Green Min/Max: Limits how strong the green channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Blue Min/Max: Limits how strong the blue channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Seed: Will replicate a specific noise seed on every execution.
+  * Fixed, seed stays the same after generations.
+  * Increment, seed increases by 1 after generations.
+  * Decrement, seed decreases by 1 after generations.
+  * Randomize, seed randomly changes after generations.
+____
+## Brown Noise:
+![Example](images/brown_node.png)
+
+This node generates three values per pixel, then rescales it per channel min/max values.
+
+* Width, Height: Sets the generated image size as desired - steps in increments of 8.
+* Value Min/Max: Limits how dark/bright the noise can reach. -1 implies 0 and 255 for Min and Max respectively.
+* Red Min/Max: Limits how strong the red channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Green Min/Max: Limits how strong the green channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Blue Min/Max: Limits how strong the blue channel can be. -1 Will use the settings of Value Min/Max instead of it's own setting.
+* Seed: Will replicate a specific noise seed on every execution.
+  * Fixed, seed stays the same after generations.
+  * Increment, seed increases by 1 after generations.
+  * Decrement, seed decreases by 1 after generations.
+  * Randomize, seed randomly changes after generations.
+____
 ## Plasma KSampler:
 ![Example](images/ksampler_node.png)
 

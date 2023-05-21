@@ -1,13 +1,110 @@
-from PIL import Image
+from PIL import Image, ImageEnhance
 import math
 import copy
 import random
 import torch
 import numpy as np
 import comfy
+import math
 
 def remap(val, min_val, max_val, min_map, max_map):
 	return (val-min_val)/(max_val-min_val) * (max_map-min_map) + min_map
+
+def conv_pil_tensor(img):
+	return (torch.from_numpy(np.array(img).astype(np.float32) / 255.0).unsqueeze(0),)
+
+def conv_tensor_pil(tsr):
+	return Image.fromarray(np.clip(255. * tsr.cpu().numpy().squeeze(), 0, 255).astype(np.uint8))
+
+def clamp(val, min, max):
+	if val < min:
+		return min
+	elif val > max:
+		return max
+	else:
+		return val
+
+class PowerImage:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"IMAGE": ("IMAGE",),
+				"power_of": ("FLOAT", {"default": 1, "min": 1, "max": 65536, "step": 0.01}),
+				"mode": (["darken", "lighten", "emphasize both"],),
+			}
+		}
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "process_image"
+
+	CATEGORY = "image/postprocessing"
+
+	def process_image(self, IMAGE, power_of, mode):
+		cimg = conv_tensor_pil(IMAGE)
+		w, h = cimg.size
+
+		pbar = comfy.utils.ProgressBar(h)
+		step = 0
+		for y in range(h):
+			for x in range(w):
+				r, g, b = cimg.getpixel((x, y))
+
+				if mode == "lighten":
+					r *= 1 + pow(r/255, power_of)
+					g *= 1 + pow(g/255, power_of)
+					b *= 1 + pow(b/255, power_of)
+				elif mode == "emphasize both":
+					r *= 0.5 + pow(r/255, power_of)
+					g *= 0.5 + pow(g/255, power_of)
+					b *= 0.5 + pow(b/255, power_of)
+				else:
+					r *= pow(r/255, power_of)
+					g *= pow(g/255, power_of)
+					b *= pow(b/255, power_of)
+
+				r = clamp(r, 0, 255)
+				g = clamp(g, 0, 255)
+				b = clamp(b, 0, 255)
+
+				cimg.putpixel((x, y), (int(r), int(g), int(b)))
+			step += 1
+			pbar.update_absolute(step, h)
+
+		return conv_pil_tensor(cimg)
+
+
+class ImageContrast:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"IMAGE": ("IMAGE",),
+				"contrast": ("FLOAT", {"default": 1, "min": 0, "max": 10, "step": 0.01}),
+				"brightness": ("FLOAT", {"default": 1, "min": 0, "max": 10, "step": 0.01}),
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "process_image"
+
+	CATEGORY = "image/postprocessing"
+
+	def process_image(self, IMAGE, contrast, brightness):
+		cimg = conv_tensor_pil(IMAGE)
+		w, h = cimg.size
+
+		pbar = comfy.utils.ProgressBar(2)
+		step = 0
+		cnt = ImageEnhance.Contrast(cimg)
+		cimg = cnt.enhance(contrast)
+		step += 1
+		pbar.update_absolute(step, h)
+		brt = ImageEnhance.Brightness(cimg)
+		cimg = brt.enhance(brightness)
+		step += 1
+		pbar.update_absolute(step, h)
+
+		return conv_pil_tensor(cimg)
 
 class PlasmaNoise:
 	@classmethod
@@ -241,7 +338,7 @@ class PlasmaNoise:
 
 		step += 1
 		pbar.update_absolute(step, 4)
-		return (torch.from_numpy(np.array(outimage).astype(np.float32) / 255.0).unsqueeze(0),)
+		return conv_pil_tensor(outimage)
 
 class RandNoise:
 	@classmethod
@@ -399,7 +496,7 @@ class RandNoise:
 			step += 1
 			pbar.update_absolute(step, ah)
 
-		return (torch.from_numpy(np.array(outimage).astype(np.float32) / 255.0).unsqueeze(0),)
+		return conv_pil_tensor(outimage)
 
 
 class GreyNoise:
@@ -559,27 +656,343 @@ class GreyNoise:
 			step += 1
 			pbar.update_absolute(step, ah)
 
-		return (torch.from_numpy(np.array(outimage).astype(np.float32) / 255.0).unsqueeze(0),)
+		return conv_pil_tensor(outimage)
+
+class PinkNoise:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"width": ("INT", {
+					"default": 512,
+					"min": 128,
+					"max": 8192,
+					"step": 8
+				}),
+				"height": ("INT", {
+					"default": 512,
+					"min": 128,
+					"max": 8192,
+					"step": 8
+				}),
+
+				"value_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"value_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+
+				"red_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"red_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"green_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"green_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"blue_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"blue_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				# Does nothing because ComfyUI doesn't understand "static" output nodes
+				"seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "generate_noise"
+	CATEGORY = "image/noise"
+
+	def generate_noise(self, width, height, value_min, value_max, red_min, red_max, green_min, green_max, blue_min, blue_max, seed):
+		# Image size
+		w = width
+		h = height
+		aw = copy.deepcopy(w)
+		ah = copy.deepcopy(h)
+
+		outimage = Image.new("RGB", (aw, ah))
+		random.seed(seed)
+
+		# Clamp per channel and globally
+		clamp_v_min = value_min
+		clamp_v_max = value_max
+		clamp_r_min = red_min
+		clamp_r_max = red_max
+		clamp_g_min = green_min
+		clamp_g_max = green_max
+		clamp_b_min = blue_min
+		clamp_b_max = blue_max
+
+		# Handle value clamps
+		lv = 0
+		mv = 0
+		if clamp_v_min == -1:
+			lv = 0
+		else:
+			lv = clamp_v_min
+
+		if clamp_v_max == -1:
+			mv = 255
+		else:
+			mv = clamp_v_max
+
+		lr = 0
+		mr = 0
+		if clamp_r_min == -1:
+			lr = lv
+		else:
+			lr = clamp_r_min
+
+		if clamp_r_max == -1:
+			mr = mv
+		else:
+			mr = clamp_r_max
+
+		lg = 0
+		mg = 0
+		if clamp_g_min == -1:
+			lg = lv
+		else:
+			lg = clamp_g_min
+
+		if clamp_g_max == -1:
+			mg = mv
+		else:
+			mg = clamp_g_max
+
+		lb = 0
+		mb = 0
+		if clamp_b_min == -1:
+			lb = lv
+		else:
+			lb = clamp_b_min
+
+		if clamp_b_max == -1:
+			mb = mv
+		else:
+			mb = clamp_b_max
+
+		pbar = comfy.utils.ProgressBar(ah)
+		step = 0
+		for y in range(ah):
+			for x in range(aw):
+				nr = clamp(int(np.power(random.randint(lr, mr)/255, 1/3) * 255), 0, 255)
+				ng = clamp(int(np.power(random.randint(lg, mg)/255, 1/3) * 255), 0, 255)
+				nb = clamp(int(np.power(random.randint(lb, mb)/255, 1/3) * 255), 0, 255)
+				outimage.putpixel((x,y), (nr, ng, nb))
+			step += 1
+			pbar.update_absolute(step, ah)
+
+		return conv_pil_tensor(outimage)
+
+class BrownNoise:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"width": ("INT", {
+					"default": 512,
+					"min": 128,
+					"max": 8192,
+					"step": 8
+				}),
+				"height": ("INT", {
+					"default": 512,
+					"min": 128,
+					"max": 8192,
+					"step": 8
+				}),
+
+				"value_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"value_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+
+				"red_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"red_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"green_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"green_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"blue_min": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				"blue_max": ("INT", {
+					"default": -1,
+					"min": -1,
+					"max": 255,
+					"step": 1
+				}),
+				# Does nothing because ComfyUI doesn't understand "static" output nodes
+				"seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "generate_noise"
+	CATEGORY = "image/noise"
+
+	def generate_noise(self, width, height, value_min, value_max, red_min, red_max, green_min, green_max, blue_min, blue_max, seed):
+		# Image size
+		w = width
+		h = height
+		aw = copy.deepcopy(w)
+		ah = copy.deepcopy(h)
+
+		outimage = Image.new("RGB", (aw, ah))
+		random.seed(seed)
+
+		# Clamp per channel and globally
+		clamp_v_min = value_min
+		clamp_v_max = value_max
+		clamp_r_min = red_min
+		clamp_r_max = red_max
+		clamp_g_min = green_min
+		clamp_g_max = green_max
+		clamp_b_min = blue_min
+		clamp_b_max = blue_max
+
+		# Handle value clamps
+		lv = 0
+		mv = 0
+		if clamp_v_min == -1:
+			lv = 0
+		else:
+			lv = clamp_v_min
+
+		if clamp_v_max == -1:
+			mv = 255
+		else:
+			mv = clamp_v_max
+
+		lr = 0
+		mr = 0
+		if clamp_r_min == -1:
+			lr = lv
+		else:
+			lr = clamp_r_min
+
+		if clamp_r_max == -1:
+			mr = mv
+		else:
+			mr = clamp_r_max
+
+		lg = 0
+		mg = 0
+		if clamp_g_min == -1:
+			lg = lv
+		else:
+			lg = clamp_g_min
+
+		if clamp_g_max == -1:
+			mg = mv
+		else:
+			mg = clamp_g_max
+
+		lb = 0
+		mb = 0
+		if clamp_b_min == -1:
+			lb = lv
+		else:
+			lb = clamp_b_min
+
+		if clamp_b_max == -1:
+			mb = mv
+		else:
+			mb = clamp_b_max
+
+		pbar = comfy.utils.ProgressBar(ah)
+		step = 0
+		for y in range(ah):
+			for x in range(aw):
+				nr = clamp(int(np.power(np.power(random.randint(lr, mr)/255, 1/3), 1/3) * 255), 0, 255)
+				ng = clamp(int(np.power(np.power(random.randint(lg, mg)/255, 1/3), 1/3) * 255), 0, 255)
+				nb = clamp(int(np.power(np.power(random.randint(lb, mb)/255, 1/3), 1/3) * 255), 0, 255)
+				outimage.putpixel((x,y), (nr, ng, nb))
+			step += 1
+			pbar.update_absolute(step, ah)
+
+		return conv_pil_tensor(outimage)
 
 # Torch rand noise
 def prepare_rand_noise(latent_image, seed, noise_inds=None):
-    """
-    creates random noise given a latent image and a seed.
-    optional arg skip can be used to skip and discard x number of noise generations for a given seed
-    """
-    generator = torch.manual_seed(seed)
-    if noise_inds is None:
-        return (torch.rand(latent_image.size(), dtype=latent_image.dtype, layout=latent_image.layout, generator=generator, device="cpu") - 0.5) * 2 * 1.73
-    
-    unique_inds, inverse = np.unique(noise_inds, return_inverse=True)
-    noises = []
-    for i in range(unique_inds[-1]+1):
-        noise = (torch.rand(latent_image.size(), dtype=latent_image.dtype, layout=latent_image.layout, generator=generator, device="cpu") - 0.5) * 2 * 1.73
-        if i in unique_inds:
-            noises.append(noise)
-    noises = [noises[i] for i in inverse]
-    noises = torch.cat(noises, axis=0)
-    return noises
+	"""
+	creates random noise given a latent image and a seed.
+	optional arg skip can be used to skip and discard x number of noise generations for a given seed
+	"""
+	generator = torch.manual_seed(seed)
+	if noise_inds is None:
+		return (torch.rand(latent_image.size(), dtype=latent_image.dtype, layout=latent_image.layout, generator=generator, device="cpu") - 0.5) * 2 * 1.73
+	
+	unique_inds, inverse = np.unique(noise_inds, return_inverse=True)
+	noises = []
+	for i in range(unique_inds[-1]+1):
+		noise = (torch.rand(latent_image.size(), dtype=latent_image.dtype, layout=latent_image.layout, generator=generator, device="cpu") - 0.5) * 2 * 1.73
+		if i in unique_inds:
+			noises.append(noise)
+	noises = [noises[i] for i in inverse]
+	noises = torch.cat(noises, axis=0)
+	return noises
 
 # Modified ComfyUI sampler
 def common_ksampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent, denoise, latent_noise, use_rand=False, start_step=None, last_step=None):
@@ -645,12 +1058,20 @@ NODE_CLASS_MAPPINGS = {
 	"JDC_Plasma": PlasmaNoise,
 	"JDC_RandNoise": RandNoise,
 	"JDC_GreyNoise": GreyNoise,
+	"JDC_PinkNoise": PinkNoise,
+	"JDC_BrownNoise": BrownNoise,
 	"JDC_PlasmaSampler": PlasmaSampler,
+	"JDC_PowerImage": PowerImage,
+	"JDC_Contrast": ImageContrast
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
 	"JDC_Plasma": "Plasma Noise",
 	"JDC_RandNoise": "Random Noise",
 	"JDC_GreyNoise": "Greyscale Noise",
-	"JDC_PlasmaSampler": "Plasma KSampler"
+	"JDC_PinkNoise": "Pink Noise",
+	"JDC_BrownNoise": "Brown Noise",
+	"JDC_PlasmaSampler": "Plasma KSampler",
+	"JDC_PowerImage": "Image To The Power Of",
+	"JDC_Contrast": "Brightness & Contrast"
 }
