@@ -1,4 +1,4 @@
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageOps, ImageFilter
 import math
 import copy
 import random
@@ -23,6 +23,163 @@ def clamp(val, min, max):
 		return max
 	else:
 		return val
+
+def get_pil_resampler(resampler):
+	if resampler == "nearest":
+		return Image.Resampling.NEAREST
+	elif resampler == "box":
+		return Image.Resampling.BOX
+	elif resampler == "bilinear":
+		return Image.Resampling.BILINEAR
+	elif resampler == "bicubic":
+		return Image.Resampling.BICUBIC
+	elif resampler == "hamming":
+		return Image.Resampling.HAMMING
+	elif resampler == "lanczos":
+		return Image.Resampling.LANCZOS
+	else:
+		return Image.Resampling.NEAREST
+
+class GreyScale:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"IMAGE": ("IMAGE",),
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "process_image"
+
+	CATEGORY = "image/postprocessing"
+
+	def process_image(self, IMAGE):
+		cimg = conv_tensor_pil(IMAGE)
+		gimg = ImageOps.grayscale(cimg)
+		rgbimg = Image.new("RGB", (gimg.width, gimg.height))
+		rgbimg.paste(gimg)
+		return conv_pil_tensor(rgbimg)
+
+class Equalize:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"IMAGE": ("IMAGE",),
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "process_image"
+
+	CATEGORY = "image/postprocessing"
+
+	def process_image(self, IMAGE):
+		cimg = conv_tensor_pil(IMAGE)
+		return conv_pil_tensor(ImageOps.equalize(cimg))
+
+class AutoContrast:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"IMAGE": ("IMAGE",),
+				"cutoff": ("FLOAT", {"default": 2, "min": 0, "max": 100, "step": 0.01}),
+				"min_value": ("INT", {"default": -1, "min": -1, "max": 255, "step": 1})
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "process_image"
+
+	CATEGORY = "image/postprocessing"
+
+	def process_image(self, IMAGE, cutoff, min_value):
+		cimg = conv_tensor_pil(IMAGE)
+		if min_value >= 0:
+			return conv_pil_tensor(ImageOps.autocontrast(cimg, cutoff=cutoff, ignore=min_value))
+		else:
+			return conv_pil_tensor(ImageOps.autocontrast(cimg, cutoff=cutoff))
+
+class ResizeFactor:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"IMAGE": ("IMAGE",),
+				"factor": ("FLOAT", {"default": 2, "min": 0.01, "max": 10, "step": 0.01}),
+				"resampler": (["nearest", "box", "bilinear", "bicubic", "hamming", "lanczos"],)
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "process_image"
+
+	CATEGORY = "image/postprocessing"
+
+	def process_image(self, IMAGE, factor, resampler):
+		cimg = conv_tensor_pil(IMAGE)
+		(w, h) = (int(cimg.width * factor), int(cimg.height * factor))
+		sampler = get_pil_resampler(resampler)
+		return conv_pil_tensor(cimg.resize((w, h), resample=sampler))
+
+class BlendImages:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"IMAGE_A": ("IMAGE",),
+				"IMAGE_B": ("IMAGE",),
+				"blend": ("FLOAT", {"default": 0.5, "min": 0, "max": 1, "step": 0.001})
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "process_image"
+
+	CATEGORY = "image/postprocessing"
+
+	def process_image(self, IMAGE_A, IMAGE_B, blend):
+		# Convert from tensors
+		source_a = conv_tensor_pil(IMAGE_A)
+		source_b = conv_tensor_pil(IMAGE_B)
+		aw, ah = source_a.width, source_a.height
+		bw, bh = source_b.width, source_b.height
+
+		# Convert image to RGB space
+		img_a = Image.new("RGB", (aw, ah))
+		img_a.paste(source_a)
+		img_b = Image.new("RGB", (bw, bh))
+		img_b.paste(source_b)
+		
+		# If img_b is not the same size as img_a - scale img_b to img_a dimensions.
+		if ((aw != bw) or (ah != bh)):
+			img_b.resize((aw, ah), resample=get_pil_resampler("lanczos"))
+
+		# Finally, blend the two
+		return conv_pil_tensor(Image.blend(img_a, img_b, blend))
+
+class GaussianBlur:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+			"required": {
+				"IMAGE": ("IMAGE",),
+				"blur_radius": ("FLOAT", {"default": 1, "min": 1, "max": 1024, "step": 0.01})
+			}
+		}
+
+	RETURN_TYPES = ("IMAGE",)
+	FUNCTION = "process_image"
+
+	CATEGORY = "image/postprocessing"
+
+	def process_image(self, IMAGE, blur_radius):
+		img = conv_tensor_pil(IMAGE)
+
+		# Finally, blend the two
+		return conv_pil_tensor(img.filter(ImageFilter.GaussianBlur(blur_radius)))
 
 class PowerImage:
 	@classmethod
@@ -71,7 +228,6 @@ class PowerImage:
 			pbar.update_absolute(step, h)
 
 		return conv_pil_tensor(cimg)
-
 
 class ImageContrast:
 	@classmethod
@@ -497,7 +653,6 @@ class RandNoise:
 			pbar.update_absolute(step, ah)
 
 		return conv_pil_tensor(outimage)
-
 
 class GreyNoise:
 	@classmethod
@@ -1062,7 +1217,13 @@ NODE_CLASS_MAPPINGS = {
 	"JDC_BrownNoise": BrownNoise,
 	"JDC_PlasmaSampler": PlasmaSampler,
 	"JDC_PowerImage": PowerImage,
-	"JDC_Contrast": ImageContrast
+	"JDC_Contrast": ImageContrast,
+	"JDC_Greyscale": GreyScale,
+	"JDC_EqualizeGrey": Equalize,
+	"JDC_AutoContrast": AutoContrast,
+	"JDC_ResizeFactor": ResizeFactor,
+	"JDC_BlendImages": BlendImages,
+	"JDC_GaussianBlur": GaussianBlur
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -1073,5 +1234,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 	"JDC_BrownNoise": "Brown Noise",
 	"JDC_PlasmaSampler": "Plasma KSampler",
 	"JDC_PowerImage": "Image To The Power Of",
-	"JDC_Contrast": "Brightness & Contrast"
+	"JDC_Contrast": "Brightness & Contrast",
+	"JDC_Greyscale": "RGB to Greyscale",
+	"JDC_EqualizeGrey": "Equalize Histogram",
+	"JDC_AutoContrast": "AutoContrast",
+	"JDC_ResizeFactor": "Resize Image by Factor",
+	"JDC_BlendImages": "Blend Images",
+	"JDC_GaussianBlur": "Gaussian Blur"
 }
