@@ -1,4 +1,5 @@
 from PIL import Image, ImageEnhance, ImageOps, ImageFilter
+from io import BytesIO
 import math
 import copy
 import random
@@ -6,6 +7,9 @@ import torch
 import numpy as np
 import comfy
 import math
+import os
+import hashlib
+import requests
 
 def remap(val, min_val, max_val, min_map, max_map):
 	return (val-min_val)/(max_val-min_val) * (max_map-min_map) + min_map
@@ -1209,6 +1213,60 @@ class PlasmaSampler:
 			rand = True
 		return common_ksampler(model, noise_seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise, latent_noise, use_rand=rand)
 
+class LoadImagePath:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+				"required": 
+					{
+						"image": ("STRING", {"default": ""})
+					}
+				}
+
+	CATEGORY = "image"
+
+	RETURN_TYPES = ("IMAGE", "MASK")
+	FUNCTION = "load_image"
+	def load_image(self, image):
+		image_path = image
+		i = None
+		if image_path.startswith("http"):
+			response = requests.get(image_path)
+			i = Image.open(BytesIO(response.content)).convert("RGB")
+		else:
+			i = Image.open(image_path)
+		i = ImageOps.exif_transpose(i)
+		image = i.convert("RGB")
+		image = np.array(image).astype(np.float32) / 255.0
+		image = torch.from_numpy(image)[None,]
+		if 'A' in i.getbands():
+			mask = np.array(i.getchannel('A')).astype(np.float32) / 255.0
+			mask = 1. - torch.from_numpy(mask)
+		else:
+			mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
+		return (image, mask)
+
+	@classmethod
+	def IS_CHANGED(s, image):
+		image_path = image
+		m = hashlib.sha256()
+		if not image_path.startswith("http"):
+			with open(image_path, 'rb') as f:
+				m.update(f.read())
+			return m.digest().hex()
+		else:
+			m.update(image.encode("utf-8"))
+			return m.digest().hex()
+
+	@classmethod
+	def VALIDATE_INPUTS(s, image):
+		if image.startswith("http"):
+			return True
+		if not os.path.isfile(image):
+			return "No file found: {}".format(image)
+
+		return True
+
 NODE_CLASS_MAPPINGS = {
 	"JDC_Plasma": PlasmaNoise,
 	"JDC_RandNoise": RandNoise,
@@ -1223,7 +1281,8 @@ NODE_CLASS_MAPPINGS = {
 	"JDC_AutoContrast": AutoContrast,
 	"JDC_ResizeFactor": ResizeFactor,
 	"JDC_BlendImages": BlendImages,
-	"JDC_GaussianBlur": GaussianBlur
+	"JDC_GaussianBlur": GaussianBlur,
+	"JDC_ImageLoader": LoadImagePath
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -1240,5 +1299,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 	"JDC_AutoContrast": "AutoContrast",
 	"JDC_ResizeFactor": "Resize Image by Factor",
 	"JDC_BlendImages": "Blend Images",
-	"JDC_GaussianBlur": "Gaussian Blur"
+	"JDC_GaussianBlur": "Gaussian Blur",
+	"JDC_ImageLoader": "Load Image From Path"
 }
