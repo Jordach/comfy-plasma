@@ -1351,7 +1351,9 @@ class LoadImagePath:
 	RETURN_TYPES = ("IMAGE", "MASK")
 	FUNCTION = "load_image"
 	def load_image(self, image):
-		image_path = image
+		# Removes any quotes from Explorer
+		image_path = str(image)
+		image_path = image_path.replace('"', "")
 		i = None
 		if image_path.startswith("http"):
 			response = requests.get(image_path)
@@ -1371,7 +1373,8 @@ class LoadImagePath:
 
 	@classmethod
 	def IS_CHANGED(s, image):
-		image_path = image
+		image_path = str(image)
+		image_path = image_path.replace('"', "")
 		m = hashlib.sha256()
 		if not image_path.startswith("http"):
 			with open(image_path, 'rb') as f:
@@ -1383,10 +1386,12 @@ class LoadImagePath:
 
 	@classmethod
 	def VALIDATE_INPUTS(s, image):
-		if image.startswith("http"):
+		image_path = str(image)
+		image_path = image_path.replace('"', "")
+		if image_path.startswith("http"):
 			return True
-		if not os.path.isfile(image):
-			return "No file found: {}".format(image)
+		if not os.path.isfile(image_path):
+			return "No file found: {}".format(image_path)
 
 		return True
 
@@ -1410,7 +1415,6 @@ class LoadImagePathWithMetadata:
 		# Removes any quotes from Explorer
 		image_path = str(image)
 		image_path = image_path.replace('"', "")
-		print(image_path)
 		i = None
 		if image_path.startswith("http"):
 			response = requests.get(image_path)
