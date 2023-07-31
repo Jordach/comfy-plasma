@@ -1,5 +1,6 @@
 from PIL import Image, ImageEnhance, ImageOps, ImageFilter
 from io import BytesIO
+from xml.dom import minidom
 import math
 import copy
 import random
@@ -10,6 +11,11 @@ import math
 import os
 import hashlib
 import requests
+import json
+# import piexif
+# import piexif.helper
+
+# Useful utilities
 
 def remap(val, min_val, max_val, min_map, max_map):
 	return (val-min_val)/(max_val-min_val) * (max_map-min_map) + min_map
@@ -43,6 +49,123 @@ def get_pil_resampler(resampler):
 		return Image.Resampling.LANCZOS
 	else:
 		return Image.Resampling.NEAREST
+
+# borrowed from https://github.com/receyuki/stable-diffusion-prompt-reader/blob/master/sd_prompt_reader/image_data_reader.py
+EASYDIFFUSION_MAPPING_A = {
+	"prompt": "Prompt",
+	"negative_prompt": "Negative Prompt",
+	"seed": "Seed",
+	"use_stable_diffusion_model": "Stable Diffusion model",
+	"clip_skip": "Clip Skip",
+	"use_vae_model": "VAE model",
+	"sampler_name": "Sampler",
+	"width": "Width",
+	"height": "Height",
+	"num_inference_steps": "Steps",
+	"guidance_scale": "Guidance Scale",
+}
+
+EASYDIFFUSION_MAPPING_B = {
+	"prompt": "prompt",
+	"negative_prompt": "negative_prompt",
+	"seed": "seed",
+	"use_stable_diffusion_model": "use_stable_diffusion_model",
+	"clip_skip": "clip_skip",
+	"use_vae_model": "use_vae_model",
+	"sampler_name": "sampler_name",
+	"width": "width",
+	"height": "height",
+	"num_inference_steps": "num_inference_steps",
+	"guidance_scale": "guidance_scale",
+}
+
+def handle_auto1111(params):
+	if params and "\nSteps:" in params:
+		# has a negative:
+		if "Negative prompt:" in params:
+			prompt_index = [params.index("\nNegative prompt:"), params.index("\nSteps:")]
+			neg = params[prompt_index[0] + 1 + len("Negative prompt: "):prompt_index[-1]]
+		else:
+			index = [params.index("\nSteps:")]
+			neg = ""
+
+		pos = params[:prompt_index[0]]
+		return pos, neg
+	elif params:
+		# has a negative:
+		if "Negative prompt:" in params:
+			prompt_index = [params.index("\nNegative prompt:")]
+			neg = params[prompt_index[0] + 1 + len("Negative prompt: "):]
+		else:
+			index = [len(params)]
+			neg = ""
+		
+		pos = params[:prompt_index[0]]
+		return pos, neg
+	else:
+		return "", ""
+
+def handle_ezdiff(params):
+	data = json.loads(params)
+	if data.get("prompt"):
+		ed = EASYDIFFUSION_MAPPING_B
+	else:
+		ed = EASYDIFFUSION_MAPPING_A
+
+	pos = data.get(ed["prompt"])
+	data.pop(ed["prompt"])
+	neg = data.get(ed["negative_prompt"])
+	return pos, neg
+
+def handle_invoke_modern(params):
+	meta = json.loads(params.get("sd-metadata"))
+	img = meta.get("image")
+	prompt = img.get("prompt")
+	index = [prompt.rfind("["), prompt.rfind("]")]
+
+	# negative
+	if -1 not in index:
+		pos = prompt[:index[0]]
+		neg = prompt[index[0] + 1:index[1]]
+		return pos, neg
+	else:
+		return prompt, ""
+
+def handle_invoke_legacy(params):
+	dream = params.get("Dream")
+	pi = dream.rfind('"')
+	ni = [dream.rfind("["), dream.rfind("]")]
+
+	# has neg
+	if -1 not in ni:
+		pos = dream[1:ni[0]]
+		neg = dream[ni[0] + 1:ni[1]]
+		return pos, neg
+	else:
+		pos = dream[1:pi]
+		return pos, ""
+
+def handle_novelai(params):
+	pos = params.get("Description")
+	comment = params.get("Comment") or {}
+	comment_json = json.loads(comment)
+	neg = comment_json.get("uc")
+	return pos, neg
+
+def handle_qdiffusion(params):
+	pass
+
+def handle_drawthings(params):
+	try:
+		data = minidom.parseString(params.get("XML:com.adobe.xmp"))
+		data_json = json.loads(data.getElementByTagName("exif:UserComment")[0].childNodes[1].childNodes[1].childNodes[0].data)
+	except:
+		return "", ""
+	else:
+		pos = data_json.get("c")
+		neg = data_json.get("uc")
+		return pos, neg
+
 
 class GreyScale:
 	@classmethod
@@ -1267,6 +1390,99 @@ class LoadImagePath:
 
 		return True
 
+class LoadImagePathWithMetadata:
+	@classmethod
+	def INPUT_TYPES(s):
+		return {
+				"required": 
+					{
+						"image": ("STRING", {"default": ""})
+					}
+				}
+
+	CATEGORY = "image"
+
+	RETURN_TYPES = ("IMAGE", "MASK", "STRING", "STRING", "INT", "INT")
+	RETURN_NAMES = ("image", "mask", "PROMPT", "NEGATIVE", "WIDTH", "HEIGHT")
+	FUNCTION = "load_image"
+
+	def load_image(self, image):
+		# Removes any quotes from Explorer
+		image_path = str(image)
+		image_path = image_path.replace('"', "")
+		print(image_path)
+		i = None
+		if image_path.startswith("http"):
+			response = requests.get(image_path)
+			i = Image.open(BytesIO(response.content)).convert("RGB")
+		else:
+			i = Image.open(image_path)
+		prompt = ""
+		negative = ""
+		width = i.width
+		height = i.height
+		
+		if i.format == "PNG":
+			# auto1111
+			if "parameters" in i.info:
+				params = i.info.get("parameters")
+				prompt, negative = handle_auto1111(params)
+
+			# easy diffusion
+			elif "negative_prompt" in i.info or "Negative Prompt" in i.info:
+				params = str(i.info).replace("'", '"')
+				prompt, negative = handle_ezdiff(params)
+			# invokeai modern
+			elif "sd-metadata" in i.info:
+				prompt, negative = handle_invoke_modern(i.info)
+			# legacy invokeai
+			elif "Dream" in i.info:
+				prompt, negative = handle_invoke_legacy(i.info)
+			# novelai
+			elif i.info.get("Software") == "NovelAI":
+				prompt, negative = handle_novelai(i.info)
+			# qdiffusion
+			# elif ????:
+			# drawthings (iPhone, iPad, macOS)
+			elif "XML:com.adobe.xmp" in i.info:
+				prompt, negative = handle_drawthings(i.info)
+		
+		# Removes EXIF rotation and other nonsense
+		i = ImageOps.exif_transpose(i)
+		image = i.convert("RGB")
+		image = np.array(image).astype(np.float32) / 255.0
+		image = torch.from_numpy(image)[None,]
+		if 'A' in i.getbands():
+			mask = np.array(i.getchannel('A')).astype(np.float32) / 255.0
+			mask = 1. - torch.from_numpy(mask)
+		else:
+			mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
+		return (image, mask, prompt, negative, width, height)
+
+	@classmethod
+	def IS_CHANGED(s, image):
+		image_path = str(image)
+		image_path = image_path.replace('"', "")
+		m = hashlib.sha256()
+		if not image_path.startswith("http"):
+			with open(image_path, 'rb') as f:
+				m.update(f.read())
+			return m.digest().hex()
+		else:
+			m.update(image.encode("utf-8"))
+			return m.digest().hex()
+
+	@classmethod
+	def VALIDATE_INPUTS(s, image):
+		image_path = str(image)
+		image_path = image_path.replace('"', "")
+		if image_path.startswith("http"):
+			return True
+		if not os.path.isfile(image_path):
+			return "No file found: {}".format(image_path)
+
+		return True
+
 NODE_CLASS_MAPPINGS = {
 	"JDC_Plasma": PlasmaNoise,
 	"JDC_RandNoise": RandNoise,
@@ -1282,7 +1498,8 @@ NODE_CLASS_MAPPINGS = {
 	"JDC_ResizeFactor": ResizeFactor,
 	"JDC_BlendImages": BlendImages,
 	"JDC_GaussianBlur": GaussianBlur,
-	"JDC_ImageLoader": LoadImagePath
+	"JDC_ImageLoader": LoadImagePath,
+	"JDC_ImageLoaderMeta": LoadImagePathWithMetadata
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -1300,5 +1517,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 	"JDC_ResizeFactor": "Resize Image by Factor",
 	"JDC_BlendImages": "Blend Images",
 	"JDC_GaussianBlur": "Gaussian Blur",
-	"JDC_ImageLoader": "Load Image From Path"
+	"JDC_ImageLoader": "Load Image From Path",
+	"JDC_ImageLoaderMeta": "Load Image From Path With Meta"
 }
